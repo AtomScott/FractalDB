@@ -1,0 +1,15 @@
+{
+        "configurations": [
+                {
+                        "name": "Main",
+                        "type": "python",
+                        "request": "launch",
+                        "cwd": "${workspaceFolder}",
+                        "module": "src.main",
+                        "console": "integratedTerminal",
+                        "justMyCode": false,
+                        "args": [
+                        ]
+                }
+        ]
+}

@@ -1,0 +1,15 @@
+defaults:
+  - hydra/job_logging : default     # Job's logging config
+  - hydra/launcher: basic           # Launcher config
+  - hydra/sweeper: basic            # Sweeper config
+  - hydra/output: default           # Output directory
+  
+name: "Basic Config"
+batch_size: 16
+n_hidden: 128
+hidden_dim: 128
+learning_rate: 1e-3
+gpus: 1
+dataset: "./data/fractaldb_cat60_ins1000"
+model: "alexnet"
+num_workers: 0

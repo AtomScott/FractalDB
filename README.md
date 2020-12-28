@@ -1,5 +1,10 @@
 # WIP Fork of FractalDB
 
+
+Below, is the original readme file left untouched.
+
+--- 
+
 ## Summary
 
 The repository contains a fractal category search and FractalDB renderer in Python.
