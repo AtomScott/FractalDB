@@ -1,6 +1,12 @@
 # WIP Fork of FractalDB
 
+Example,
 
+```
+python3 -m src.main --multirun epochs=10 model=squeezenet1_1,resnet50,resnext50_32x4d,wide_resnet50_2,mnasnet1_0,densenet,shufflenetv2,vit_small_patch16_224,efficientnet_lite0
+```
+
+See models.py for all models.
 Below, is the original readme file left untouched.
 
 --- 
