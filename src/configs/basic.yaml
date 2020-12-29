@@ -5,11 +5,10 @@ defaults:
   - hydra/output: default           # Output directory
   
 name: "Basic Config"
-batch_size: 16
-n_hidden: 128
-hidden_dim: 128
+batch_size: 32
 learning_rate: 1e-3
 gpus: 1
 dataset: "./data/fractaldb_cat60_ins1000"
-model: "alexnet"
-num_workers: 0
+model: "efficientnet_b0"
+num_workers: 12
+epochs: 100

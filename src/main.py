@@ -1,37 +1,32 @@
+from pathlib import Path
+
 import hydra
 import pytorch_lightning as pl
 import torch
-from pathlib import Path
 from omegaconf import DictConfig, OmegaConf
-from rich import print, inspect
+from pl_bolts.datamodules import CIFAR10DataModule
+from pytorch_lightning.metrics.classification import Accuracy
+from rich import inspect, print
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split
-from torchvision import transforms, datasets
+from torchvision import datasets, transforms
 from torchvision.datasets.mnist import MNIST
-from pl_bolts.datamodules import CIFAR10DataModule
+from pytorch_lightning.loggers import CSVLogger
 
 from .dataloader import FractalDataModule
-import torchvision.models as models
+from .models import get_classifier
 
-
-class Backbone(torch.nn.Module):
-    def __init__(self, hidden_dim=128):
-        super().__init__()
-        self.l1 = torch.nn.Linear(512 * 512, hidden_dim)
-        self.l2 = torch.nn.Linear(hidden_dim, 10)
-
-    def forward(self, x):
-        x = x.view(x.size(0), -1)
-        x = torch.relu(self.l1(x))
-        x = torch.relu(self.l2(x))
-        return x
+import pandas as pd
 
 
 class LitClassifier(pl.LightningModule):
-    def __init__(self, backbone, learning_rate=1e-3):
+    def __init__(self, backbone, learning_rate=1e-3, cfg=None):
         super().__init__()
+        self.cfg = cfg
         self.backbone = backbone
         self.save_hyperparameters()
+        self.acc = Accuracy()
+        self.df = pd.DataFrame({"Epoch": [], "Accuracy": [], "Loss": [], "Model": []})
 
     def forward(self, x):
         # use forward for inference/predictions
@@ -49,7 +44,27 @@ class LitClassifier(pl.LightningModule):
         x, y = batch
         y_hat = self.backbone(x)
         loss = F.cross_entropy(y_hat, y)
+        acc = self.acc(y_hat, y)
         self.log("valid_loss", loss, on_step=True)
+        self.log("accuracy", acc, on_step=True)
+        return {"loss": loss, "acc": acc}
+
+    def validation_epoch_end(self, validation_step_outputs):
+        if self.training:
+            acc = sum([v["acc"] for v in validation_step_outputs]) / len(
+                validation_step_outputs
+            )
+            loss = sum([v["loss"] for v in validation_step_outputs]) / len(
+                validation_step_outputs
+            )
+            self.df = self.df.append(
+                {
+                    "Epoch": self.current_epoch,
+                    "Accuracy": acc,
+                    "Loss": loss,
+                    "Model": self.cfg.model,
+                }
+            )
 
     def test_step(self, batch, batch_idx):
         x, y = batch
@@ -60,6 +75,10 @@ class LitClassifier(pl.LightningModule):
     def configure_optimizers(self):
         # self.hparams available because we called self.save_hyperparameters()
         return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
+
+    def on_fit_end(self):
+        print(self.df)
+        self.df.to_csv("fit_result.csv")
 
     # @staticmethod
     # def add_model_specific_args(parent_parser):
@@ -74,23 +93,31 @@ def cli_main(cfg: DictConfig) -> None:
     pl.seed_everything(42)
 
     root = Path(hydra.utils.get_original_cwd())
+
     # ------------
     # data
     # ------------
+    transform = transforms.Compose(
+        [
+            transforms.Resize(224),
+            transforms.ToTensor(),
+        ]
+    )
+
     fractal_data_module = FractalDataModule(
-        root.joinpath(cfg.dataset), transform=transforms.ToTensor()
+        root.joinpath(cfg.dataset), transform=transform
     )
 
     # ------------
     # model
     # ------------
-    _model = eval(f"models.{cfg.model}(pretrained=False)")
-    model = LitClassifier(_model, cfg.learning_rate)
+    _model = get_classifier(cfg.model)
+    model = LitClassifier(_model, cfg.learning_rate, cfg=cfg)
 
     # ------------
     # training
     # ------------
-    trainer = pl.Trainer(gpus=cfg.gpus, logger=None)
+    trainer = pl.Trainer(gpus=cfg.gpus, logger=None, max_epochs=cfg.epochs)
     trainer.fit(model, datamodule=fractal_data_module)
 
     # ------------
