@@ -50,21 +50,20 @@ class LitClassifier(pl.LightningModule):
         return {"loss": loss, "acc": acc}
 
     def validation_epoch_end(self, validation_step_outputs):
-        if self.training:
-            acc = sum([v["acc"] for v in validation_step_outputs]) / len(
-                validation_step_outputs
-            )
-            loss = sum([v["loss"] for v in validation_step_outputs]) / len(
-                validation_step_outputs
-            )
-            self.df = self.df.append(
-                {
-                    "Epoch": self.current_epoch,
-                    "Accuracy": acc,
-                    "Loss": loss,
-                    "Model": self.cfg.model,
-                }
-            )
+        acc = sum([v["acc"].item() for v in validation_step_outputs]) / len(
+            validation_step_outputs
+        )
+        loss = sum([v["loss"].item() for v in validation_step_outputs]) / len(
+            validation_step_outputs
+        )
+        self.df = self.df.append(
+            {
+                "Epoch": self.current_epoch,
+                "Accuracy": acc,
+                "Loss": loss,
+                "Model": self.cfg.model,
+            }, ignore_index=True
+        )
 
     def test_step(self, batch, batch_idx):
         x, y = batch
