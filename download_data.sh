@@ -12,7 +12,7 @@ curl -Lb /tmp/cookie "https://drive.google.com/uc?export=download&confirm=${CODE
 
 # Unzip 
 tar -xf FractalDB-1k.tar.gz -C data/
-tar -xf FractalDB-60.tar.gz -d data/
+tar -xf FractalDB-60.tar.gz -C data/
 
 # delete downloaded zips
 rm FractalDB-1k.tar.gz
