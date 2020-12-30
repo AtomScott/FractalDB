@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 
 import hydra
 import pytorch_lightning as pl
@@ -26,7 +27,7 @@ class LitClassifier(pl.LightningModule):
         self.backbone = backbone
         self.save_hyperparameters()
         self.acc = Accuracy()
-        self.df = pd.DataFrame({"Epoch": [], "Accuracy": [], "Loss": [], "Model": []})
+        self.df = pd.DataFrame({"Epoch": [], "Validation_Accuracy": [], "Validation_Loss": [], "Model": []})
 
     def forward(self, x):
         # use forward for inference/predictions
@@ -39,6 +40,17 @@ class LitClassifier(pl.LightningModule):
         loss = F.cross_entropy(y_hat, y)
         self.log("train_loss", loss, on_epoch=True)
         return loss
+    
+    def training_epoch_end(self, training_step_outputs):
+        loss = sum([v["Train_loss"].item() for v in training_step_outputs]) / len(
+            training_step_outputs
+        self.df = self.df.append(
+            {
+                "Epoch": self.current_epoch,
+                "Train Loss": loss,
+                "Model": self.cfg.model,
+                "Datetime": datetime.now(),
+            }, ignore_index=True)
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -59,11 +71,13 @@ class LitClassifier(pl.LightningModule):
         self.df = self.df.append(
             {
                 "Epoch": self.current_epoch,
-                "Accuracy": acc,
-                "Loss": loss,
+                "Validation_Accuracy": acc,
+                "Validation_Loss": loss,
                 "Model": self.cfg.model,
+                "Datetime": datetime.now(),
             }, ignore_index=True
         )
+        print(self.df.tail())
 
     def test_step(self, batch, batch_idx):
         x, y = batch
